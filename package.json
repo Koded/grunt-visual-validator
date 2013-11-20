@@ -1,0 +1,43 @@
+{
+  "name": "visual-validator",
+  "description": "Visually compare the same webpage on two different hosts - one represents a stable baseline environment and the other a development environment.",
+  "version": "0.0.5",
+  "homepage": "",
+  "author": {
+    "name": "Jon Brace",
+    "email": "jon@kode.uk.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Koded/grunt-visual-validator.git"
+  },
+  "bugs": {
+    "url": ""
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "/blob/master/LICENSE-MIT"
+    }
+  ],
+  "main": "Gruntfile.js",
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "~0.6.0",
+    "grunt-contrib-clean": "~0.4.0",
+    "grunt-contrib-nodeunit": "~0.2.0",
+    "grunt": "~0.4.1",
+    "node-phantom-simple": "~1.0.15",
+    "gm": "~1.13.3",
+    "q": "~0.9.7",
+    "fs.extra": "~1.2.1"
+  },
+  "peerDependencies": {
+    "grunt": "~0.4.1"
+  },
+  "keywords": [
+    "gruntplugin"
+  ]
+}
