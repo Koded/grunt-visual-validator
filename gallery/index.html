@@ -21,7 +21,7 @@
         $(document).ready(function () {
 
             var source = $("#entry-template").html(),
-                    template = Handlebars.compile(source);
+                template = Handlebars.compile(source);
 
             $('#content').html(template({
                 data: data
@@ -36,6 +36,11 @@
             }
             return cnt;
         });
+
+        Handlebars.registerHelper('logthis', function(context, options) {
+            console.log(context);
+        });
+
     </script>
 </head>
 <body>
@@ -45,67 +50,37 @@
     </div>
 
     <script id="entry-template" type="text/x-handlebars-template">
+        <div class="panel-group" id="accordion">
         {{#each data}}
-        <div class="row">
-            <div class="panel {{#if isEqual}}panel-success{{else}}panel-danger{{/if}}" data-toggle="collapse"
-                 data-target="#collapse{{uid true}}">
+            <div class="panel panel-default {{#if isEqual}}panel-success{{else}}panel-danger{{/if}}">
                 <div class="panel-heading">
-                    <h3 class="panel-title">{{this.results.0.value.pagetitle}}</h3>
+                    <h4 class="panel-title">
+                        <a data-toggle="collapse" data-parent="#accordion" href="#collapse{{uid true}}">
+                            {{this.result.pagetitle}}
+                        </a>
+                    </h4>
                 </div>
-                <div class="panel-body collapse" id="collapse{{uid false}}">
-                    {{#each this.results}}
-
-                    <!-- Modal -->
-                    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
-                         aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <button type="button" class="close" data-dismiss="modal"
-                                            aria-hidden="true">&times;</button>
-                                    <h4 class="modal-title" id="myModalLabel">Modal title</h4>
-                                </div>
-                                <div class="modal-body">
-                                    ...
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                                    <button type="button" class="btn btn-primary">Save changes</button>
-                                </div>
-                            </div>
-                            <!-- /.modal-content -->
+                <div id="collapse{{uid false}}" class="panel-collapse collapse in">
+                    <div class="panel-body">
+                        {{#each this.result.paths}}
+                        <div class='col-md-4'>
+                            <a href="../{{this.path}}" class="thumbnail">
+                                <img data-src="holder.js/100%x180" src="../{{this.path}}" style="width:200px;"/>
+                            </a>
+                            <a href="{{host}}{{../this.result.url}}">{{this.hostLabel}}</a>
                         </div>
-                        <!-- /.modal-dialog -->
-                    </div>
-                    <!-- /.modal -->
-
-                    <a href="#" data-toggle="modal" data-target="#myModal">test</a>
-
-                    <div class='col-md-4'>
-                        <a href="#img{{uid false}}" data-toggle="lightbox" class="thumbnail">
-                            <img data-src="holder.js/100%x180" src="../{{this.value.fullpath}}" style="width:200px;"/>
-                            <a href="{{value.host}}{{value.url}}">{{value.host}}</a>
-                        </a>
-
-                        <div id="img{{uid false}}" class="lightbox hide fade" tabindex="-1" role="dialog"
-                             aria-hidden="true">
-                            <div class='lightbox-content'>
-                                <img src="../{{this.value.fullpath}}">
-
-                                <div class="lightbox-caption"><p>Your caption here</p></div>
-                            </div>
+                        {{/each}}
+                        <div class='col-md-4'>
+                            <a href="../{{this.diff}}" class="thumbnail">
+                                <img src="../{{this.diff}}" style="width:200px;"/>
+                            </a>
                         </div>
-                    </div>
-                    {{/each}}
-                    <div class='col-md-4'>
-                        <a href="#" class="thumbnail">
-                            <img src="../{{this.diff}}" style="width:200px;"/>
-                        </a>
                     </div>
                 </div>
             </div>
-        </div>
         {{/each}}
+        </div>
     </script>
+    </div>
 </body>
 </html>
