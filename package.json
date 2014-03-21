@@ -24,7 +24,7 @@
   "engines": {
     "node": ">= 0.8.0"
   },
-  "devDependencies": {
+  "dependencies": {
     "node-phantom": "~0.2.5",
     "gm": "~1.13.3",
     "q": "~0.9.7",
