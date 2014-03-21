@@ -16,7 +16,8 @@ var phantom = require('node-phantom'),
     crypto = require('crypto'),
     async = require('async'),
     _ = require('lodash'),
-    path = require('path');
+    path = require('path'),
+    handlebars = require('handlebars');
 
 module.exports = function (grunt) {
 
@@ -56,20 +57,24 @@ module.exports = function (grunt) {
 
               grunt.verbose.writeln("Writing to: " + path);
 
-              page.render(path, function (err) {
-                if (err) throw err;
+              /* Need to delay for font rendering. Need to find a more elegant solution */
+              setTimeout(function() {
 
-                ph.exit();
-                //ph._phantom.kill('SIGTERM');
-                callback({
-                  host: task.host,
-                  hostLabel: task.hostLabel,
-                  url: task.pageUrl,
-                  fullpath: path,
-                  pagetitle: result,
-                  uid: hash
+                page.render(path, function (err) {
+                  if (err) throw err;
+
+                  ph.exit();
+                  //ph._phantom.kill('SIGTERM');
+                  callback({
+                    host: task.host,
+                    hostLabel: task.hostLabel,
+                    url: task.pageUrl,
+                    fullpath: path,
+                    pagetitle: result,
+                    uid: hash
+                  });
                 });
-              });
+              }, 5000);
             });
           });
         });
@@ -100,8 +105,7 @@ module.exports = function (grunt) {
         grunt.log.warn('Changes found (' + equality + ')');
       }
 
-      //  --include-matching
-      if ( !isEqual || grunt.option('include-matching') ) {
+      if ( !isEqual || options.includeMatching ) {
 
         var diffPath = options.screenshots + '/diffs/' + data.pagetitle + '.' + data.uid + '.png';
 
@@ -114,8 +118,6 @@ module.exports = function (grunt) {
           isEqual: isEqual,
           result: data
         };
-
-        fs.appendFile('./gallery/data.js', 'data.push(' + JSON.stringify(jsonResults) + ');', function (err) {});
 
       }
       else {
@@ -133,27 +135,21 @@ module.exports = function (grunt) {
   grunt.registerMultiTask('visual_validator', 'Compare screenshots of a development site against a baseline site.', function () {
 
     var screenshots = [];
+    var done = this.async();
 
     var options = this.options({
       screenshots: 'screenshots',
-      threshold: 0.0001
+      threshold: 0.003,
+      includeMatching: false
     });
 
     options.screenshots = grunt.option('screenshots') || options.screenshots;
     options.hosts.dev = grunt.option('host-dev') || options.hosts.dev;
     options.hosts.stable = grunt.option('host-stable') || options.hosts.stable;
-
-    var done = this.async();
+    options.includeMatching = grunt.option('include-matching') || options.includeMatching;
 
     fs.rmrfSync(options.screenshots);
-
-    if ( fs.existsSync('./gallery/data.js') ) {
-      fs.unlinkSync('./gallery/data.js');
-    }
-
     fs.mkdirpSync(options.screenshots + '/diffs');
-
-    fs.appendFile('./gallery/data.js', 'var data = [];');
 
     if ( typeof options.urls === 'function' ) {
       var urls = options.urls();
@@ -176,25 +172,25 @@ module.exports = function (grunt) {
 
     grunt.log.header("Generating Screenshots");
 
-      urls.forEach(function (pageUrl) {
+    urls.forEach(function (pageUrl) {
 
-        [{label:'dev',host:options.hosts.dev}, {label:'stable',host:options.hosts.stable}].forEach(function (env) {
+      [{label:'dev',host:options.hosts.dev}, {label:'stable',host:options.hosts.stable}].forEach(function (env) {
 
-          screenshot.push({
-            host: env.host,
-            hostLabel: env.label,
-            pageUrl: pageUrl,
-            screenshotsDir: options.screenshots
-          }, function (result, err) {
-            if ( err ) {
-              grunt.log.error(err);
-            }
-            screenshots.push(result);
-            grunt.log.writeln('Rendered: ' + result.fullpath);
-            grunt.verbose.writeln('Remaining: ' + screenshot.length());
-          });
+        screenshot.push({
+          host: env.host,
+          hostLabel: env.label,
+          pageUrl: pageUrl,
+          screenshotsDir: options.screenshots
+        }, function (result, err) {
+          if ( err ) {
+            grunt.log.error(err);
+          }
+          screenshots.push(result);
+          grunt.log.writeln('Rendered: ' + result.fullpath);
+          grunt.verbose.writeln('Remaining: ' + screenshot.length());
         });
       });
+    });
 
     screenshot.drain = function() {
 
@@ -250,11 +246,29 @@ module.exports = function (grunt) {
           data: item,
           options: options
         }, function(response) {
-          result.push(response);
+          if ( response ) {
+            result.push(response);
+          }
         });
       });
 
       createDiff.drain = function() {
+
+        var cnt = 1;
+        var galleryTemplate = fs.readFileSync(__dirname + '/../gallery.hbs', 'utf8');
+        var template;
+
+        handlebars.registerHelper('uid', function (context, options) {
+          if (context) {
+            cnt++;
+          }
+          return cnt;
+        });
+
+        template = handlebars.compile(galleryTemplate);
+
+        fs.writeFileSync(options.screenshots + '/gallery.html', template({data: result}));
+
         fs.writeFile(options.screenshots + '/data.json', JSON.stringify(result), function (err) {
           done();
         });
