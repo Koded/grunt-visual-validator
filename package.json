@@ -31,7 +31,8 @@
     "fs.extra": "~1.2.1",
     "async": "~0.2.10",
     "lodash": "~2.4.1",
-    "handlebars": "2.0.0-alpha.2"
+    "handlebars": "2.0.0-alpha.2",
+    "temporary": "0.0.8"
   },
   "devDependencies": {
     "grunt-contrib-jshint": "~0.6.0",

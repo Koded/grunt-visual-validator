@@ -8,90 +8,40 @@
 
 'use strict';
 
-var phantom = require('node-phantom'),
-    url = require('url'),
-    Q = require('q'),
+var Q = require('q'),
     fs = require('fs.extra'),
     gm = require('gm'),
-    crypto = require('crypto'),
     async = require('async'),
     _ = require('lodash'),
     path = require('path'),
-    handlebars = require('handlebars');
+    handlebars = require('handlebars'),
+    tmp = require('temporary');
 
 module.exports = function (grunt) {
 
+  /**
+   * Take a screenshot
+   * @type {Array}
+   */
   var screenshot = async.queue(function (task, callback) {
 
-    grunt.log.writeln('Rendering: ' + task.pageUrl);
-
-    try {
-
-      phantom.create(function (err, ph) {
-        if (err) throw err;
-
-        var path;
-
-        ph.createPage(function (err, page) {
-          if (err) throw err;
-
-          page.setViewport({width: 1280, height: 1024});
-
-          page.open(task.host + task.pageUrl, function (err, status) {
-
-            if ( status == 404 ) {
-              Grunt.log.warn('Page not found: ' + task.host + task.pageUrl);
-            }
-
-            if (err) throw err;
-            page.evaluate(function () {
-              return document.getElementsByTagName('title')[0].innerText;
-            }, function (err, result) {
-
-              var urlParts = url.parse(task.host);
-              if (err) throw err;
-
-              var hash = crypto.createHash('md5').update(task.pageUrl).digest('hex').substring(0, 8);
-
-              path = task.screenshotsDir + '/' + urlParts.hostname + '/' + result + '.' + hash + '.png';
-
-              grunt.verbose.writeln("Writing to: " + path);
-
-              /* Need to delay for font rendering. Need to find a more elegant solution */
-              setTimeout(function() {
-
-                page.render(path, function (err) {
-                  if (err) throw err;
-
-                  ph.exit();
-                  //ph._phantom.kill('SIGTERM');
-                  callback({
-                    host: task.host,
-                    hostLabel: task.hostLabel,
-                    url: task.pageUrl,
-                    fullpath: path,
-                    pagetitle: result,
-                    uid: hash
-                  });
-                });
-              }, 5000);
-            });
-          });
-        });
-      }, {parameters:{
-        'ignore-ssl-errors':'yes'
-      }});
-
-    } catch ( err ) {
-      grunt.log.error(err);
-    }
+    task.browser.render(task, grunt, function(response) {
+      callback(response);
+    });
 
   }, 4);
 
+  /**
+   * Create a diff file from two images.
+   * @type {Array}
+   */
   var createDiff = async.queue(function(task, callback) {
 
     var data = task.data;
     var options = task.options;
+
+    console.log(data.paths[1].path);
+    console.log(data.paths[0].path);
 
     gm.compare(data.paths[0].path, data.paths[1].path, options.threshold, function (err, isEqual, equality, raw) {
 
@@ -107,7 +57,9 @@ module.exports = function (grunt) {
 
       if ( !isEqual || options.includeMatching ) {
 
-        var diffPath = options.screenshots + '/diffs/' + data.pagetitle + '.' + data.uid + '.png';
+        data.url.substr(1).replace('/', '--').replace('.html', '');
+
+        var diffPath = options.screenshots + '/diffs/' + data.url.substr(1).replace('/', '--').replace('.html', '') + '.png';
 
         gm.compare(data.paths[0].path, data.paths[1].path, {
           'file': diffPath
@@ -127,8 +79,6 @@ module.exports = function (grunt) {
 
       callback(jsonResults);
     });
-
-
   });
 
 
@@ -136,11 +86,13 @@ module.exports = function (grunt) {
 
     var screenshots = [];
     var done = this.async();
+    var browser;
 
     var options = this.options({
       screenshots: 'screenshots',
       threshold: 0.003,
-      includeMatching: false
+      includeMatching: false,
+      browser: 'slimerjs'
     });
 
     options.screenshots = grunt.option('screenshots') || options.screenshots;
@@ -158,18 +110,6 @@ module.exports = function (grunt) {
       var urls = options.urls;
     }
 
-    /**
-     * Can't seem to catch a phantom crash
-     */
-    var stayAlive = setInterval(function() {
-
-      if ( screenshot.length() == 0 && screenshot.running() != 0 ) {
-        // probably phantom has crashed so force a drain.
-        grunt.verbose.warn("Workers finished but screenshots outstanding - PhantomJs has probably crashed.")
-        screenshot.drain();
-      }
-    }, 2000);
-
     grunt.log.header("Generating Screenshots");
 
     urls.forEach(function (pageUrl) {
@@ -180,7 +120,8 @@ module.exports = function (grunt) {
           host: env.host,
           hostLabel: env.label,
           pageUrl: pageUrl,
-          screenshotsDir: options.screenshots
+          screenshotsDir: options.screenshots,
+          browser: require('../lib/browsers/browser-' + options.browser  + '.js')
         }, function (result, err) {
           if ( err ) {
             grunt.log.error(err);
@@ -237,7 +178,6 @@ module.exports = function (grunt) {
       });
 
       grunt.log.header("Comparing Screenshots");
-      clearInterval(stayAlive);
 
       var result = [];
 
