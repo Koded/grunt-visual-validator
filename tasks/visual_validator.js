@@ -40,9 +40,6 @@ module.exports = function (grunt) {
     var data = task.data;
     var options = task.options;
 
-    console.log(data.paths[1].path);
-    console.log(data.paths[0].path);
-
     gm.compare(data.paths[0].path, data.paths[1].path, options.threshold, function (err, isEqual, equality, raw) {
 
       if (err) {
@@ -59,7 +56,7 @@ module.exports = function (grunt) {
 
         data.url.substr(1).replace('/', '--').replace('.html', '');
 
-        var diffPath = options.screenshots + '/diffs/' + data.url.substr(1).replace('/', '--').replace('.html', '') + '.png';
+        var diffPath = options.screenshots + '/diffs/' + data.url.substr(1).replace(/\//g, "--").replace('.html', '') + '.png';
 
         gm.compare(data.paths[0].path, data.paths[1].path, {
           'file': diffPath
