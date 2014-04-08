@@ -207,7 +207,14 @@ module.exports = function (grunt) {
         fs.writeFileSync(options.screenshots + '/gallery.html', template({data: result}));
 
         fs.writeFile(options.screenshots + '/data.json', JSON.stringify(result), function (err) {
-          done();
+          if (_.isFunction(options.results) ) {
+            options.results(result, options.project, function() {
+              done();
+            });
+          }
+          else {
+            done();
+          }
         });
       };
     };
